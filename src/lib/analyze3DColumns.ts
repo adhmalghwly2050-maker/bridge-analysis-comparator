@@ -902,12 +902,64 @@ export function getFrameResults3D(
     }
   }
 
+  // ── Helper: trim momentStations to the clear span (face-to-face) ─────
+  // The 3D solver builds elements between column centres (centre-to-centre),
+  // so momentStations cover the full c/c length L. ETABS however reports
+  // moments only along the clear span between column FACES, with rigid-end
+  // offsets eating the portion inside each column.
+  // To match ETABS exactly we:
+  //   1) compute halfColLeft / halfColRight (in metres)
+  //   2) sample the existing dense station grid at face-to-face positions
+  //   3) resample to the same number of stations on the clear length
+  //   4) report span = clearSpan and Mleft/Mright at the column faces
+  // Returns the trimmed values.
+  function trimToClearSpan(
+    Lcc: number,
+    stations: number[] | undefined,
+    Mleft: number,
+    Mright: number,
+    Mmid: number,
+    halfColLeft: number,
+    halfColRight: number,
+  ): { span: number; Mleft: number; Mright: number; Mmid: number; stations?: number[] } {
+    const clearSpan = Math.max(Lcc - halfColLeft - halfColRight, Lcc * 0.5);
+    if (!stations || stations.length < 2 || halfColLeft + halfColRight < 1e-6) {
+      return { span: clearSpan, Mleft, Mright, Mmid, stations };
+    }
+    const nSeg = stations.length - 1;
+    const sampleAt = (xCC: number) => {
+      const xc = Math.max(0, Math.min(Lcc, xCC));
+      const t = (xc / Lcc) * nSeg;
+      const i0 = Math.max(0, Math.min(nSeg - 1, Math.floor(t)));
+      const frac = t - i0;
+      return stations[i0] * (1 - frac) + stations[i0 + 1] * frac;
+    };
+    const nNew = stations.length;
+    const newStations: number[] = new Array(nNew);
+    for (let s = 0; s < nNew; s++) {
+      const xClear = (s / (nNew - 1)) * clearSpan;       // position on clear span
+      const xCC = halfColLeft + xClear;                  // mapped to c/c position
+      newStations[s] = sampleAt(xCC);
+    }
+    const newMleft  = newStations[0];
+    const newMright = newStations[nNew - 1];
+    const newMmid   = sampleAt(halfColLeft + clearSpan / 2);
+    return { span: clearSpan, Mleft: newMleft, Mright: newMright, Mmid: newMmid, stations: newStations };
+  }
+
   return frames.map((frame): FrameResult => {
     const frameBeams: FrameResult['beams'] = [];
 
     for (const beamId of frame.beamIds) {
       const beam = beamsMap.get(beamId);
       if (!beam) continue;
+
+      // Compute half-column widths along the beam direction (in metres)
+      const fromCol = columns.find(c => c.id === beam.fromCol);
+      const toCol   = columns.find(c => c.id === beam.toCol);
+      const isHoriz = Math.abs(beam.x2 - beam.x1) >= Math.abs(beam.y2 - beam.y1);
+      const halfColLeft  = fromCol ? (isHoriz ? fromCol.b : fromCol.h) / 2000 : 0;
+      const halfColRight = toCol   ? (isHoriz ? toCol.b   : toCol.h)   / 2000 : 0;
 
       // Check whether this beam was split into _A/_B sub-elements
       const envA = beamEnvelope.get(`beam_${beamId}_A`);
@@ -963,16 +1015,22 @@ export function getFrameResults3D(
         }
       }
 
+      // ── Apply clear-span trimming so output matches ETABS (face-to-face) ──
+      const Mmid_cc = finalEnv?.momentZmid ?? 0;
+      const trimmed = trimToClearSpan(
+        beam.length, stations, Mleft, Mright, Mmid_cc, halfColLeft, halfColRight,
+      );
+
       frameBeams.push({
         beamId,
-        span: beam.length,
-        Mleft,
-        Mmid:   finalEnv?.momentZmid ?? 0,
-        Mright,
+        span: trimmed.span,                                   // clear span (face-to-face)
+        Mleft:  trimmed.Mleft,
+        Mmid:   trimmed.Mmid,
+        Mright: trimmed.Mright,
         Vu:     finalEnv?.shearYMax  ?? 0,
         Rleft:  finalEnv ? Math.abs(finalEnv.shearYI) : 0,
         Rright: finalEnv ? Math.abs(finalEnv.shearYJ) : 0,
-        momentStations: stations,
+        momentStations: trimmed.stations,
       });
     }
 
