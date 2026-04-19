@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Upload, Download, BarChart3, AlertTriangle, Info, FileText } from 'lucide-react';
 import type { FrameResult, Beam } from '@/lib/structuralEngine';
+import { sampleMomentAt } from '@/lib/etabsStationSampler';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -290,6 +291,13 @@ const ETABSImportPanel: React.FC<Props> = ({
       }
     }
 
+    // Pre-compute factored UDL per beam (used as fallback when an engine
+    // doesn't provide momentStations — same formula as rawMomentStationsExporter).
+    const wuMap = new Map<string, number>();
+    for (const b of beams) {
+      wuMap.set(b.id, 1.2 * b.deadLoad + 1.6 * b.liveLoad);
+    }
+
     return etabsData.map(row => {
       // Check if this ETABS beam was merged into another
       const mergeInfo = mergeMap.get(row.beam);
@@ -304,26 +312,16 @@ const ETABSImportPanel: React.FC<Props> = ({
       const rUC = mapUC?.get(engineBeamId);
       const span =
         r3d?.span ?? r2d?.span ?? beamSpanMap.get(engineBeamId) ?? 0;
+      const wuFallback = wuMap.get(engineBeamId);
 
-      const sampleAt = (br: { Mleft: number; Mmid: number; Mright: number; momentStations?: number[] } | undefined): number | null => {
-        if (!br || span <= 0) return null;
-        if (br.momentStations && br.momentStations.length > 2) {
-          const nSt = br.momentStations.length - 1;
-          const t = adjustedStation / span;
-          const idx = t * nSt;
-          const i0 = Math.min(Math.floor(idx), nSt - 1);
-          const i1 = i0 + 1;
-          const frac = idx - i0;
-          return br.momentStations[i0] * (1 - frac) + br.momentStations[i1] * frac;
-        }
-        return interpolateMoment(adjustedStation, span, br.Mleft, br.Mmid, br.Mright);
-      };
-
-      const m2d  = sampleAt(r2d);
-      const m3d  = sampleAt(r3d);
-      const mFem = sampleAt(rFem);
-      const mGF  = sampleAt(rGF);
-      const mUC  = sampleAt(rUC);
+      // Evaluate every engine at the SAME ETABS station — that is the
+      // unified-stations comparison principle: for each beam, the canonical
+      // station grid is whatever ETABS provides.
+      const m2d  = sampleMomentAt(r2d,  adjustedStation, span, wuFallback);
+      const m3d  = sampleMomentAt(r3d,  adjustedStation, span, wuFallback);
+      const mFem = sampleMomentAt(rFem, adjustedStation, span, wuFallback);
+      const mGF  = sampleMomentAt(rGF,  adjustedStation, span, wuFallback);
+      const mUC  = sampleMomentAt(rUC,  adjustedStation, span, wuFallback);
 
       return {
         ...row,
