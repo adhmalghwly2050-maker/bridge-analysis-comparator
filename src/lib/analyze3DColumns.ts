@@ -1015,16 +1015,22 @@ export function getFrameResults3D(
         }
       }
 
+      // ── Apply clear-span trimming so output matches ETABS (face-to-face) ──
+      const Mmid_cc = finalEnv?.momentZmid ?? 0;
+      const trimmed = trimToClearSpan(
+        beam.length, stations, Mleft, Mright, Mmid_cc, halfColLeft, halfColRight,
+      );
+
       frameBeams.push({
         beamId,
-        span: beam.length,
-        Mleft,
-        Mmid:   finalEnv?.momentZmid ?? 0,
-        Mright,
+        span: trimmed.span,                                   // clear span (face-to-face)
+        Mleft:  trimmed.Mleft,
+        Mmid:   trimmed.Mmid,
+        Mright: trimmed.Mright,
         Vu:     finalEnv?.shearYMax  ?? 0,
         Rleft:  finalEnv ? Math.abs(finalEnv.shearYI) : 0,
         Rright: finalEnv ? Math.abs(finalEnv.shearYJ) : 0,
-        momentStations: stations,
+        momentStations: trimmed.stations,
       });
     }
 
