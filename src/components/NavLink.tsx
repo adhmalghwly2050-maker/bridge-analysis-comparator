@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "react-router-dom";
 import { forwardRef, type AnchorHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -13,14 +13,15 @@ interface NavLinkCompatProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement
 
 const NavLink = forwardRef<HTMLAnchorElement, NavLinkCompatProps>(
   ({ className, activeClassName, pendingClassName, to, children, end, ...rest }, ref) => {
+    const location = useLocation();
+    const isActive = end
+      ? location.pathname === to
+      : location.pathname === to || location.pathname.startsWith(to + "/");
     return (
       <Link
-        to={to as never}
-        ref={ref as never}
-        className={cn(className)}
-        activeOptions={{ exact: !!end }}
-        activeProps={{ className: cn(className, activeClassName) }}
-        inactiveProps={{ className: cn(className, pendingClassName) }}
+        to={to}
+        ref={ref}
+        className={cn(className, isActive ? activeClassName : pendingClassName)}
         {...rest}
       >
         {children}
