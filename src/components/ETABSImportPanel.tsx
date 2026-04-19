@@ -632,22 +632,22 @@ B2,0.00,-32.10
                       <TableCell className="font-mono text-xs">{r.station.toFixed(3)}</TableCell>
                       <TableCell className="font-mono text-xs text-orange-600 dark:text-orange-400">{r.m3.toFixed(2)}</TableCell>
                       <TableCell className="font-mono text-xs text-blue-600 dark:text-blue-400">
-                        {r.m2d !== null ? r.m2d.toFixed(2) : <span className="text-muted-foreground">—</span>}
+                        {r.m2d !== null ? r.m2d.toFixed(2) : <span className="text-red-600 dark:text-red-400">0.00 <Badge className="ml-1 text-[9px] bg-red-500/15 text-red-700 dark:text-red-400 border-red-400/40">N/A</Badge></span>}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-emerald-600 dark:text-emerald-400">
-                        {r.m3d !== null ? r.m3d.toFixed(2) : <span className="text-muted-foreground">—</span>}
+                        {r.m3d !== null ? r.m3d.toFixed(2) : <span className="text-red-600 dark:text-red-400">0.00 <Badge className="ml-1 text-[9px] bg-red-500/15 text-red-700 dark:text-red-400 border-red-400/40">N/A</Badge></span>}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-violet-600 dark:text-violet-400">
-                        {r.mFem !== null ? r.mFem.toFixed(2) : <span className="text-muted-foreground">—</span>}
+                        {r.mFem !== null ? r.mFem.toFixed(2) : <span className="text-red-600 dark:text-red-400">0.00 <Badge className="ml-1 text-[9px] bg-red-500/15 text-red-700 dark:text-red-400 border-red-400/40">N/A</Badge></span>}
                       </TableCell>
                       {hasGF && (
                         <TableCell className="font-mono text-xs text-amber-600 dark:text-amber-400">
-                          {r.mGF !== null ? r.mGF.toFixed(2) : <span className="text-muted-foreground">—</span>}
+                          {r.mGF !== null ? r.mGF.toFixed(2) : <span className="text-red-600 dark:text-red-400">0.00 <Badge className="ml-1 text-[9px] bg-red-500/15 text-red-700 dark:text-red-400 border-red-400/40">N/A</Badge></span>}
                         </TableCell>
                       )}
                       {hasUC && (
                         <TableCell className="font-mono text-xs text-purple-600 dark:text-purple-400">
-                          {r.mUC !== null ? r.mUC.toFixed(2) : <span className="text-muted-foreground">—</span>}
+                          {r.mUC !== null ? r.mUC.toFixed(2) : <span className="text-red-600 dark:text-red-400">0.00 <Badge className="ml-1 text-[9px] bg-red-500/15 text-red-700 dark:text-red-400 border-red-400/40">N/A</Badge></span>}
                         </TableCell>
                       )}
                       <TableCell className="text-center"><DiffBadge pct={r.diff2d} /></TableCell>
